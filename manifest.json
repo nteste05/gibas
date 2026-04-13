@@ -1,0 +1,11 @@
+{
+    "name": "GiBas: Aplikasi Simulasi Gitar Bass",
+    "short_name": "GiBass",
+    "description": "Mainkan gitar bass kapan saja dengan GiBas! Simulasi gitar bass akurat",
+    "icons": "gibas-favicon.jpg",
+    "theme_color": "#2D2D2D",
+    "background_color": "#2D2D2D",
+    "display": "standalone",
+    "start_url": "./index.html",
+    "orientation": "landscape"
+}
