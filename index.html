@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <link rel="canonical" href="https://nteste05.github.io/gibas/" />
+    <link rel="icon" type="image/jpg" href="gibas-favicon.jpg" sizes="32x32">
+    <link rel="apple-touch-icon" sizes="180x180" href="gibas-favicon.jpg">
+    <link rel="manifest" href="manifest.json">
+    
+    <title>GiBas: Aplikasi Simulasi Real Gitar Bass</title>
+    <meta name="description" content="Mainkan gitar bass asli di browser dengan GiBas! Simulasi real gitar bass tanpa unduh, suara HD, dan responsif. Cocok untuk latihan & belajar bass gratis.">
+    <meta name="keywords" content="simulasi real gitar bass, GiBas online, aplikasi bass tanpa unduh, main bass di browser, virtual bass guitar, latihan bass online gratis">
+    <meta name="robots" content="index, follow">
+    
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://nteste05.github.io/gibas">
+    <meta property="og:title" content="GiBas: Aplikasi Simulasi Real Gitar Bass">
+    <meta property="og:description" content="Mainkan gitar bass asli di browser dengan GiBas! Simulasi real gitar bass tanpa unduh, suara HD, dan responsif. Cocok untuk latihan & belajar bass gratis.">
+    <meta property="og:image" content="https://raw.githubusercontent.com/nteste05/gibas/refs/heads/main/gibas-thumb.jpg">
+    
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://nteste05.github.io/gibas">
+    <meta property="twitter:title" content="GiBas: Aplikasi Simulasi Real Gitar Bass">
+    <meta property="twitter:description" content="Mainkan gitar bass asli di browser dengan GiBas! Simulasi real gitar bass tanpa unduh, suara HD, dan responsif. Cocok untuk latihan & belajar bass gratis.">
+    <meta property="twitter:image" content="https://raw.githubusercontent.com/nteste05/gibas/refs/heads/main/gibas-thumb.jpg">
+    
+    <style>
+        :root {
+            --wood: #2a1b12;
+            --fret-silver: #bdc3c7;
+        }
+        body {
+            margin: 0; background: #000; color: #fff; font-family: sans-serif; 
+            height: 100vh; display: flex; flex-direction: column; overflow: hidden; user-select: none;
+        }
+
+        /* Peringatan Rotasi */
+        @media screen and (orientation: portrait) {
+            .portrait-warning { display: flex; }
+        }
+        
+        .portrait-warning {
+            display: none; position: fixed; inset: 0; background: #000;
+            z-index: 999; flex-direction: column; align-items: center;
+            justify-content: center; text-align: center;
+        }
+        
+        .controls {
+            display: flex; justify-content: center; 
+            gap: 5px; border-bottom: 1px solid #333;
+            padding: 10px;
+            margin: 0;
+        }
+        select {
+            padding: 5px;
+            background: none;
+            color: white;
+        }
+        
+        .rec-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 5px;
+            margin: 0;
+        }
+        .rec-controls button {
+            font-size: 12px;
+            padding: 10px;
+            color: white;
+            background: #222;
+            box-shadow: 0 3px #111;
+        }
+        .rec-controls button:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px #000;
+        }
+        #btnRecord.recording {
+            background: #ff4444;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        
+        .fretboard-container {
+            flex: 1; display: flex; overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 10px 0;margin-bottom: 30px;
+        }
+
+        .fretboard {
+            display: flex;
+            background: var(--wood);
+            height: 100%;
+            /* Fret diperkecil agar pas di layar */
+            min-width: 100vw; 
+            position: relative;
+            border-top: 5px solid #111;
+            border-bottom: 5px solid #111;
+        }
+
+        .fret-column {
+            flex: 1;
+            /* Jarak fret diperkecil */
+            min-width: 60px; 
+            border-right: 3px solid var(--fret-silver);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Nut (Fret 0) */
+        .fret-column[data-fret="0"] {
+            background: #151515;
+            border-right: 10px solid #000;
+            min-width: 45px;
+        }
+
+        /* Titik Penanda (Inlays) */
+        .fret-column[data-fret="3"]::after, .fret-column[data-fret="5"]::after, 
+        .fret-column[data-fret="7"]::after, .fret-column[data-fret="9"]::after {
+            content: ""; position: absolute; top: 46%; left: 40%;
+            width: 14px; height: 14px; background: rgba(255,255,255,0.15); border-radius: 50%;
+        }
+        .fret-column[data-fret="12"]::after {
+            content: ""; position: absolute; top: 25%; left: 40%; width: 14px; height: 14px; 
+            background: rgba(255,255,255,0.15); border-radius: 50%; box-shadow: 0 80px 0 rgba(255,255,255,0.15);
+        }
+
+        .string-spot {
+            flex: 1;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            z-index: 10;
+        }
+        .string-spot:active { background: rgba(255,255,255,0.1); }
+
+        .visual-line {
+            width: 100%;
+            background: linear-gradient(to bottom, #aaa, #555, #222);
+            pointer-events: none;
+        }
+        .v-g { height: 3px; } .v-d { height: 5px; } .v-a { height: 8px; } .v-e { height: 11px; }
+
+        .note-label {
+            position: absolute;
+            bottom: 5px; width: 100%; text-align: center;
+            font-size: 10px; color: #888;
+        }
+        
+        /* --- NAVIGATION & SIDEBAR --- */
+        .navbar {
+            
+            color: white;
+            display: flex;
+            align-items: center;
+            width: 100%;
+            
+        }
+
+        .menu-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            margin: 0 10px 0 0;
+        }
+
+        header h1 {
+            font-size: 12px;
+            margin:0;
+        }
+
+        .sidebar {
+            height: 100%;
+            width: 0;
+            position: fixed;
+            z-index: 2000;
+            top: 0;
+            left: 0;
+            background-color: #1a1a1a;
+            overflow-x: hidden;
+            transition: 0.3s;
+            padding-top: 10px;
+        }
+
+        .sidebar a {
+            padding: 15px 30px;
+            text-decoration: none;
+            font-size: 1.1rem;
+            color: #ccc;
+            display: block;
+            transition: 0.2s;
+            border-bottom: 1px solid #333;
+        }
+
+        .sidebar a:hover {
+            color: #ffc107;
+            background-color: #222;
+        }
+
+        .sidebar .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 36px;
+            color: white;
+            cursor: pointer;
+        }
+
+        .overlaynav {
+            display: none;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1500;
+        }
+        
+        .visually-hidden, header, header h1 {
+            position: absolute !important;
+            width: 1px !important;
+            height: 1px !important;
+            padding: 0 !important;
+            margin: -1px !important;
+            overflow: hidden !important;
+            clip: rect(0, 0, 0, 0) !important;
+            white-space: nowrap !important;
+            border: 0 !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="portrait-warning">
+        <h2>Miringkan Layar</h2>
+        <p>Gunakan mode landscape untuk bermain.</p>
+    </div>
+    
+    <div class="controls">
+        <!-- Sidebar Menu -->
+        <div id="mySidebar" class="sidebar">
+            <span class="close-btn" onclick="closeNav()">&times;</span>
+            <a href="https://nteste05.github.io/gemii/" onclick="closeNav()">👽 Lainnya</a>
+        </div>
+        <!-- Overlay Background -->
+        <div id="overlaynav" class="overlaynav" onclick="closeNav()"></div>
+        <nav class="navbar">
+            <button class="menu-btn" onclick="openNav()">&#9776;</button>
+            <header><h1>GiBas: Aplikasi Simulasi Real Gitar Bass</h1></header>
+            <p class="visually-hidden">GiBas: Revolusi Simulasi Real Gitar Bass Online Tanpa Unduh<br><br>Di era digital yang serba cepat, aksesibilitas adalah kunci utama bagi setiap musisi. Apakah Anda seorang pemain bass profesional yang sedang bepergian, atau seorang pemula yang baru saja ingin mengenal dunia instrumen low-end? Kini, Anda tidak perlu lagi terhambat oleh perangkat keras yang berat atau kerumitan menginstal perangkat lunak yang besar. Memperkenalkan GiBas, <strong>aplikasi simulasi real gitar bass</strong> tercanggih yang dapat diakses langsung melalui browser Anda.<p>
+            <p class="visually-hidden">GiBas adalah platform instrumen virtual berbasis web yang dirancang khusus untuk mereplikasi pengalaman bermain gitar bass asli secara presisi. Nama "GiBas" sendiri merupakan singkatan dari "Gitar Bass", yang menekankan fokus utama aplikasi ini pada kualitas nada rendah (bass) yang autentik. Berbeda dengan aplikasi musik konvensional yang mengharuskan Anda mengunduh file APK atau perangkat lunak desktop, GiBas sepenuhnya berjalan di atas teknologi web-based, menjadikannya sangat ringan dan fleksibel.<p>
+            <p class="visually-hidden">Fitur Unggulan GiBas yang Harus Anda Coba<br>1. Tanpa Unduh, Langsung Main. Anda hanya perlu membuka peramban (Chrome, Safari, atau Firefox) dan mengetikkan alamat GiBas. Dalam hitungan detik, Anda sudah siap memetik senar virtual tanpa perlu menunggu proses unduh atau instalasi yang membosankan.<br>2. Kualitas Sampel Suara Realistis. Kualitas suara adalah nyawa dari sebuah simulasi. GiBas menggunakan sampel audio high-definition menyerupai asli. GiBas memastikan setiap petikan jari Anda menghasilkan frekuensi yang kaya dan natural.<br>3. Latensi Rendah (Zero Lag). GiBas dioptimalkan dengan teknologi audio terbaru untuk memastikan latensi yang sangat rendah. Artinya, tidak ada jeda antara saat Anda menekan layar atau tombol keyboard dengan suara yang keluar.<br>4. Antarmuka yang Ramah Pengguna (User-Friendly). Desain fretboard pada GiBas dibuat semirip mungkin dengan tampilan fisik gitar bass asli. Penempatan posisi fret dan senar diatur secara intuitif sehingga memudahkan pemula untuk memahami letak nada. Bagi pengguna desktop, GiBas juga mendukung pemetaan keyboard sehingga Anda bisa bermain menggunakan tombol komputer layaknya bermain instrumen sungguhan.<p>
+            <p class="visually-hidden">Mengapa Anda Membutuhkan GiBas?<br>Latihan di Mana Saja: GiBas adalah teman perjalanan yang sempurna. Saat Anda berada di transportasi umum, di kantor, atau sedang menunggu janji, Anda tetap bisa melatih memori otot jari Anda.<br>Alat Bantu Komposisi: Bagi produser musik atau penulis lagu, GiBas sangat berguna untuk mencari garis bass (bassline) secara cepat sebelum direkam di studio.<br>Media Pembelajaran Gratis: Tidak semua orang memiliki budget untuk membeli gitar bass fisik di awal belajar. GiBas memberikan akses gratis bagi siapa saja yang ingin mengenal dasar-dasar bermain bass tanpa biaya sepeser pun.<p>
+            <p class="visually-hidden">Cara Mulai Menggunakan GiBas<br>Sangat mudah untuk memulai perjalanan musik Anda dengan GiBas. Cukup pastikan perangkat Anda terhubung dengan internet, buka browser favorit, dan akses situs resmi GiBas. Untuk pengalaman terbaik, kami menyarankan penggunaan headphone atau speaker eksternal berkualitas agar Anda dapat merasakan kedalaman nada rendah yang dihasilkan oleh simulasi ini.<p>
+            <p class="visually-hidden">GiBas membuktikan bahwa teknologi musik kini semakin inklusif dan mudah dijangkau. Dengan kombinasi antara kemudahan akses tanpa unduh, kualitas suara realistik, dan performa yang responsif, <strong>GiBas bukan sekadar aplikasi simulasi biasa</strong>—ini adalah alat revolusioner bagi setiap pecinta musik.<br>Jangan biarkan kreativitas Anda terhambat oleh ruang penyimpanan atau ketiadaan instrumen fisik. <br>Mainkan GiBas</br> sekarang juga dan rasakan sensasi menjadi bassist profesional di ujung jari Anda!<p>
+        </nav>
+        <select id="soundMode">
+            <option value="clean">Weird Clean</option>
+            <option value="distor">Smooth Distortion</option>
+        </select>
+        <div class="rec-controls">
+            <button id="btnRecord">🔴</button>
+            <button id="btnStop" disabled>⏺️</button>
+            <button id="btnPlay" disabled>▶️</button>
+            <button id="btnSave" disabled>💾</button>
+        </div>
+    </div>
+    
+    <div class="fretboard-container">
+        <div id="fretboard" class="fretboard"></div>
+    </div>
+
+    <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Node khusus untuk menangkap aliran audio (Recording Stream)
+        const dest = audioCtx.createMediaStreamDestination();
+        
+        let mediaRecorder;
+        let audioChunks = [];
+        let audioUrl = null;
+        
+                // UI Recording Elements
+        const btnRecord = document.getElementById('btnRecord');
+        const btnStop = document.getElementById('btnStop');
+        const btnPlay = document.getElementById('btnPlay');
+        const btnSave = document.getElementById('btnSave');
+        
+        const fretboard = document.getElementById('fretboard');
+        const baseFreqs = [98.00, 73.42, 55.00, 41.20]; // G, D, A, E
+        const activeOscillators = new Map();
+        
+        // Generate tepat 12 Fret + Open String (0)
+        for (let f = 0; f <= 12; f++) {
+            const fretCol = document.createElement('div');
+            fretCol.className = 'fret-column';
+            fretCol.dataset.fret = f;
+
+            const label = document.createElement('div');
+            label.className = 'note-label';
+            label.innerText = f === 0 ? "NUT" : f;
+            fretCol.appendChild(label);
+
+            baseFreqs.forEach((baseFreq, sIdx) => {
+                const spot = document.createElement('div');
+                spot.className = 'string-spot';
+                
+                const visual = document.createElement('div');
+                visual.className = `visual-line v-${['g','d','a','e'][sIdx]}`;
+                spot.appendChild(visual);
+
+                const freq = baseFreq * Math.pow(2, f / 12);
+                const id = `s${sIdx}-f${f}`;
+
+                const startNote = (e) => {
+                    e.preventDefault();
+                    playBass(id, freq);
+                };
+
+                const stopNote = (e) => {
+                    e.preventDefault();
+                    stopBass(id);
+                };
+
+                // Desktop & Mobile Events
+                spot.onmousedown = startNote;
+                spot.onmouseup = stopNote;
+                spot.onmouseleave = stopNote;
+                spot.ontouchstart = startNote;
+                spot.ontouchend = stopNote;
+
+                fretCol.appendChild(spot);
+            });
+            fretboard.appendChild(fretCol);
+        }
+        
+        // Fungsi pembuat kurva distorsi (WaveShaper)
+        function makeDistortionCurve(amount) {
+            const k = typeof amount === 'number' ? amount : 50;
+            const n_samples = 44100;
+            const curve = new Float32Array(n_samples);
+            const deg = Math.PI / 180;
+            for (let i = 0; i < n_samples; ++i) {
+                const x = (i * 2) / n_samples - 1;
+                curve[i] = (3 + k) * x * 20 * deg / (Math.PI + k * Math.abs(x));
+            }
+            return curve;
+        }
+        
+        function playBass(id, freq) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            if (activeOscillators.has(id)) stopBass(id);
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter();
+            const distortion = audioCtx.createWaveShaper();
+            const mode = document.getElementById('soundMode').value;
+            
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(350, audioCtx.currentTime);
+            
+            gain.gain.setValueAtTime(0, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.6, audioCtx.currentTime + 0.02);
+            
+            osc.connect(filter);
+            
+            if (mode === 'distor') {
+                distortion.curve = makeDistortionCurve(100);
+                distortion.oversampling = '4x';
+                filter.connect(distortion);
+                distortion.connect(gain);
+            } else {
+                filter.connect(gain);
+            }
+            
+            gain.connect(audioCtx.destination);
+            gain.connect(dest);
+            
+            osc.start();
+            activeOscillators.set(id, { osc, gain });
+        }
+
+        function stopBass(id) {
+            if (activeOscillators.has(id)) {
+                const { osc, gain } = activeOscillators.get(id);
+                const release = 0.3;
+                gain.gain.cancelScheduledValues(audioCtx.currentTime);
+                gain.gain.setValueAtTime(gain.gain.value, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + release);
+                setTimeout(() => { osc.stop(); osc.disconnect(); }, release * 1000);
+                activeOscillators.delete(id);
+            }
+        }
+        
+        // --- LOGIKA REKAMAN ---
+        btnRecord.onclick = () => {
+            audioChunks = [];
+            mediaRecorder = new MediaRecorder(dest.stream);
+            
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) audioChunks.push(e.data);
+            };
+
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                audioUrl = URL.createObjectURL(audioBlob);
+                btnPlay.disabled = false;
+                btnSave.disabled = false;
+            };
+
+            mediaRecorder.start();
+            btnRecord.disabled = true;
+            btnRecord.classList.add('recording');
+            btnStop.disabled = false;
+        };
+        
+        let rAudio = null;
+        btnStop.onclick = () => {
+            mediaRecorder.stop();
+            btnRecord.disabled = false;
+            btnRecord.classList.remove('recording');
+            if (rAudio) {
+                rAudio.pause();
+                rAudio.currentTime = 0;
+            }
+        };
+
+        btnPlay.onclick = () => {
+            if (audioUrl) {
+                if (rAudio) {
+                rAudio.pause();
+                rAudio.currentTime = 0;
+                }
+                rAudio = new Audio(audioUrl);
+                rAudio.play();
+            }
+        };
+
+        btnSave.onclick = () => {
+            if (audioUrl) {
+                const link = document.createElement('a');
+                link.href = audioUrl;
+                link.download = 'my-chord-track.webm';
+                link.click();
+            }
+        };
+        
+        const sidebar = document.getElementById("mySidebar");
+        const overlaynav = document.getElementById("overlaynav");
+        
+        function openNav() {
+            sidebar.style.width = "280px";
+            overlaynav.style.display = "block";
+            // Mencegah scroll pada body saat menu buka
+            document.body.style.overflow = "hidden";
+        }
+        
+        function closeNav() {
+            sidebar.style.width = "0";
+            overlaynav.style.display = "none";
+            // Mengembalikan scroll body
+            document.body.style.overflow = "auto";
+        }
+    </script>
+</body>
+</html>
